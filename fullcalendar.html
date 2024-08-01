@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+
+    <!-- jquery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+    <!-- bootstrap 4 -->
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+    <!-- fullcalendar -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.7.0/main.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/fullcalendar@5.7.0/main.min.js"></script>
+
+    <!-- Axios CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+  
+  <style>
+      #calendarBox{
+          width: 70%;
+          padding-left: 15%;
+      }
+
+  </style>
+</head>
+<body>
+  <div id="calendarBox">
+      <div id="calendar"></div>
+  </div>
+
+  <div class="modal fade" id="calendarModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Input your schedule.</h5>
+                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="taskId" class="col-form-label">schedule content</label>
+                        <input type="text" class="form-control" id="title" name="calendar_content" placeholder="Enter title">
+                        <label for="taskId" class="col-form-label">start date</label>
+                        <input type="date" class="form-control" id="start" name="calendar_start_date">
+                        <label for="taskId" class="col-form-label">end date</label>
+                        <input type="date" class="form-control" id="end" name="calendar_end_date">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-warning" id="addChanges">ADD</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"
+                        id="sprintSettingModalClose">CANCEL</button>
+                </div>
+    
+            </div>
+        </div>
+    </div>
+
+  <script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function () {
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            timeZone: 'UTC',
+            initialView: 'dayGridMonth',
+            events:[],
+            headerToolbar: {
+                left: 'addEventButton, saveEventButton',
+                center: 'title'
+            }, customButtons: {
+            addEventButton: {
+                text : "Add Event",
+                click : function(){
+                    $("#calendarModal").modal("show");
+
+                    $("#addChanges").on("click", function () {
+                        var eventData = {
+                            title: $("#title").val(),
+                            start: $("#start").val(),
+                            end: $("#end").val(),
+                        };
+  
+                        if (
+                            eventData.title == "" ||
+                            eventData.start == "" ||
+                            eventData.end == ""
+                        ) {
+                            alert("You did not input some data.");
+                        } else if ($("#start").val() > $("#end").val()) {
+                            alert("You input a wrong date.");
+                            } else {
+                                calendar.addEvent(eventData);
+                                $("#calendarModal").modal("hide");
+                                $("#title").val("");
+                                $("#start").val("");
+                                $("#end").val("");
+                            }
+                        });
+                    }
+                },
+                saveEventButton: {
+                    text : "Save Event",
+                    click : async function(){
+                        try {
+                            if(confirm ("Will you save?")) {
+                                var allEvents = calendar.getEvents();
+                                const saveEvent = await axios({
+                                    method: "POST",
+                                    url:"/fullCalendar",
+                                    data: allEvents,
+                                });
+                                console.log("Events saved successfully:", saveEvent);
+                            }
+                        } catch (error) {
+                            console.error("Error saving events:", error);
+                        }
+                    }
+                }
+            },
+            editable: true,
+            displayEventTime: false,
+            eventClick: function(info) {
+                if (confirm("Do you really want to delete this event?")) {
+                    axios.delete('/fullCalendar/' + info.event.id)
+                        .then(response => {
+                            if (response.data.success) {
+                                info.event.remove();
+                                alert("Event deleted successfully!");
+                            } else {
+                                alert("Failed to delete event.");
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error deleting event:", error);
+                            alert("Error deleting event.");
+                        });
+                }
+            }
+
+
+        });
+            calendar.render();
+    });
+
+</script>
+
+</body>
+</html>
